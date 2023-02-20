@@ -15,12 +15,18 @@
  */
 package org.hibernate.bugs;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import java.util.ArrayList;
+import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
 import org.junit.Test;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 
 /**
  * This template demonstrates how to develop a test case for Hibernate ORM, using its built-in unit test framework.
@@ -34,13 +40,10 @@ import org.junit.Test;
 public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 
 	// Add your entities here.
-	@Override
-	protected Class[] getAnnotatedClasses() {
-		return new Class[] {
-//				Foo.class,
-//				Bar.class
-		};
-	}
+    @Override
+    protected Class[] getAnnotatedClasses() {
+        return new Class[] {Event.class};
+    }
 
 	// If you use *.hbm.xml mappings, instead of annotations, add the mappings here.
 	@Override
@@ -66,14 +69,30 @@ public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 		//configuration.setProperty( AvailableSettings.GENERATE_STATISTICS, "true" );
 	}
 
+    private List<String> getNames() {
+        int maxNames = 100000; // with 100k or more exception always arise
+        List<String> names = new ArrayList<>(maxNames);
+        for (int i = 0; i < maxNames; i++) {
+            names.add("abc" + i);
+        }
+        return names;
+    }
+
 	// Add your tests, using standard JUnit.
 	@Test
 	public void hhh123Test() throws Exception {
 		// BaseCoreFunctionalTestCase automatically creates the SessionFactory and provides the Session.
 		Session s = openSession();
 		Transaction tx = s.beginTransaction();
+        CriteriaBuilder cb = s.getCriteriaBuilder();
+        CriteriaQuery<Event> cr = cb.createQuery(Event.class);
+        Root<Event> root = cr.from(Event.class);
+        List<String> names = getNames();
+        cr.select(root).where(root.get("name").in(names));
+        List<Event> results = s.createQuery(cr).setMaxResults(100).getResultList();
+        assertNotNull(results);
 		// Do stuff...
-		tx.commit();
-		s.close();
+        tx.commit();
+        s.close();
 	}
 }
